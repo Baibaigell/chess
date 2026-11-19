@@ -250,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(@NonNull ConsoleMessage msg) {
-                int level = msg.messageLevel();
+                ConsoleMessage.MessageLevel level = msg.messageLevel();
                 if (level == ConsoleMessage.MessageLevel.ERROR) {
                     showError("JS 错误\n\n"
                             + msg.message() + "\n"
