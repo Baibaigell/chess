@@ -1,0 +1,16 @@
+# Render 部署配置
+# 一个服务端同时托管前端与联机，最简单也最省事。
+services:
+  - type: web
+    name: chess-app
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: node scripts/build.mjs
+    startCommand: node server/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: STATIC_ROOT
+        value: dist

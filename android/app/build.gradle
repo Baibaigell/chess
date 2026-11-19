@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.chessapp'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.chessapp"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        release {
+            // 未配置签名时，release 包不会产出可用 apk；
+            // 安装到手机请用 debug 包，或按 BUILD.md 配置签名后打 release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // 关闭部分 lint 检查，避免因资源命名等无关项阻断 debug 构建
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    // 不压缩 assets：Stockfish 的 wasm 必须原样保留
+    androidResources {
+        noCompress 'wasm'
+    }
+}
+
+dependencies {
+    // WebViewAssetLoader：把 assets 挂到 https:// 域名下，
+    // 使 Web Worker、localStorage 等与普通网页行为一致
+    implementation 'androidx.webkit:webkit:1.10.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}

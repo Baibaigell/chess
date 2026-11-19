@@ -1,0 +1,13 @@
+{
+  "name": "chess-app-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "chess-app 联机服务端：零依赖，原生 http + 手写 WebSocket",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

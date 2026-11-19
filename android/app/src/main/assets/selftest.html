@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>chess-app 自测</title>
+<style>
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:#f7f7f8;color:#1a1a1c}
+  .wrap{max-width:820px;margin:0 auto;padding:20px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#6b6f76;font-size:13px;margin:0 0 20px}
+  .test{background:#fff;border:1px solid #e2e4e8;border-radius:10px;padding:14px 16px;margin-bottom:12px}
+  .name{font-weight:600;font-size:14px;margin-bottom:8px}
+  .row{font-size:13px;padding:3px 0;color:#6b6f76;font-family:ui-monospace,monospace}
+  .pass{color:#1a7f37}
+  .fail{color:#d1453b;font-weight:600}
+  .badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;margin-left:8px}
+  .b-ok{background:#dafbe1;color:#1a7f37}
+  .b-no{background:#ffebe9;color:#d1453b}
+  .b-wait{background:#f0f1f3;color:#6b6f76}
+  iframe{width:100%;height:460px;border:1px solid #e2e4e8;border-radius:8px;background:#fff}
+  .tip{background:#fff8c5;border:1px solid #eed888;border-radius:8px;padding:10px 12px;font-size:13px;color:#6b5900;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>chess-app 自测</h1>
+  <p class="sub">检查打包产物是否完整可用。全绿说明产物没问题。</p>
+  <div class="tip">必须用 <b>http://</b> 打开本页，不要双击用 file:// 打开 —— file:// 下浏览器会拦截 fetch 与模块脚本，出现大量假失败。</div>
+  <div id="out"></div>
+  <div class="test">
+    <div class="name">实际界面预览</div>
+    <p class="row" style="font-family:inherit;color:#6b6f76">下面是打包后的真实页面（同一个 index.html），可直接交互：</p>
+    <iframe src="./index.html"></iframe>
+  </div>
+</div>
+<script>
+const out = document.getElementById('out')
+const results = []
+function T(name){
+  const d = document.createElement('div')
+  d.className = 'test'
+  d.innerHTML = '<div class="name">' + name + '</div>'
+  out.appendChild(d)
+  return d
+}
+function chk(box, label, cond, detail){
+  const r = document.createElement('div')
+  r.className = 'row ' + (cond ? 'pass' : 'fail')
+  r.textContent = (cond ? '✓ ' : '✗ ') + label + (detail ? ' — ' + detail : '')
+  box.appendChild(r)
+  results.push(!!cond)
+}
+
+/* 1. 静态资源可达 */
+const b1 = T('1. 静态资源')
+const files = [
+  ['./assets/app.js', 'app.js'],
+  ['./assets/app.css', 'app.css'],
+  ['./pieces/wn.png', '棋子图 wn.png'],
+  ['./engines/stockfish/stockfish-19-lite-single.js', '引擎 js'],
+  ['./engines/stockfish/stockfish-19-lite-single.wasm', '引擎 wasm'],
+]
+files.forEach(([url, label]) => {
+  fetch(url)
+    .then(r => chk(b1, label + ' 可加载', r.ok, 'HTTP ' + r.status))
+    .catch(e => chk(b1, label + ' 可加载', false, e.message))
+})
+
+/* 2. Web Worker（安卓 WebView 跑引擎的前提） */
+const b2 = T('2. Web Worker（电脑对手依赖）')
+;(function(){
+  let done = false
+  try {
+    const blob = new Blob(
+      ['self.onmessage=function(e){self.postMessage(e.data*2)}'],
+      { type: 'text/javascript' }
+    )
+    const w = new Worker(URL.createObjectURL(blob))
+    w.onmessage = e => {
+      if (done) return
+      done = true
+      chk(b2, 'Worker 可创建并回传', e.data === 42, '收到 ' + e.data)
+      w.terminate()
+    }
+    w.onerror = () => {
+      if (done) return
+      done = true
+      chk(b2, 'Worker 可创建并回传', false, 'Worker 报错')
+    }
+    w.postMessage(21)
+    setTimeout(() => {
+      if (!done) { done = true; chk(b2, 'Worker 可创建并回传', false, '2 秒无响应') }
+    }, 2000)
+  } catch (e) {
+    chk(b2, 'Worker 可创建并回传', false, e.message)
+  }
+})()
+
+/* 3. localStorage */
+const b3 = T('3. 本地存储')
+try {
+  localStorage.setItem('__selftest', '1')
+  chk(b3, 'localStorage 可读写', localStorage.getItem('__selftest') === '1')
+  localStorage.removeItem('__selftest')
+} catch (e) {
+  chk(b3, 'localStorage 可读写', false, e.message)
+}
+
+/* 4. 样式 */
+const b4 = T('4. 样式表')
+chk(b4, '样式表已加载', document.styleSheets.length > 0, document.styleSheets.length + ' 张')
+fetch('./assets/app.css').then(r => r.text()).then(css => {
+  chk(b4, '含网格棋盘样式', css.includes('.grid-board'))
+  chk(b4, '含象棋汉字棋子样式', css.includes('grid-piece--hanzi'))
+  chk(b4, '含五子棋圆点样式', css.includes('grid-piece--dot'))
+  chk(b4, '棋子图片用相对路径', /url\(\.\.\/pieces\//.test(css))
+  chk(b4, '无绝对 /pieces/ 路径', !/url\(\/pieces\//.test(css))
+})
+
+/* 5. 应用启动 */
+const b5 = T('5. 应用启动')
+const s = document.createElement('script')
+s.type = 'module'
+s.src = './assets/app.js'
+s.onerror = () => chk(b5, 'app.js 可作为模块执行', false, '加载失败')
+s.onload = () => {
+  setTimeout(() => {
+    const root = document.getElementById('root')
+    const okMount = !!root && root.children.length > 0
+    chk(b5, 'React 已挂载到 #root', okMount,
+        root ? root.children.length + ' 个子节点' : '页面无 #root')
+    if (root && root.textContent) {
+      chk(b5, '界面含棋种文字',
+          /国际象棋|中国象棋|五子棋/.test(root.textContent),
+          root.textContent.slice(0, 40).replace(/\s+/g, ' '))
+    }
+  }, 1500)
+}
+document.head.appendChild(s)
+
+/* 汇总 */
+setTimeout(() => {
+  const p = results.filter(Boolean).length
+  const f = results.length - p
+  const sum = document.createElement('div')
+  sum.className = 'test'
+  sum.innerHTML =
+    '<div class="name">汇总 <span class="badge ' + (f === 0 ? 'b-ok' : 'b-no') + '">' +
+    (f === 0 ? '全部通过' : '失败 ' + f + ' 项') + '</span></div>' +
+    '<div class="row">共 ' + results.length + ' 项，通过 ' + p + '，失败 ' + f + '</div>'
+  out.insertBefore(sum, out.firstChild)
+}, 3200)
+</script>
+</body>
+</html>

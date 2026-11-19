@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与前端 global.css 的深色底一致，避免启动时白屏闪烁 -->
+    <color name="app_background">#16181c</color>
+    <color name="app_primary">#2f6feb</color>
+</resources>
