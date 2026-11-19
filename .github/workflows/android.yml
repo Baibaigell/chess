@@ -18,25 +18,40 @@ jobs:
   build:
     name: 构建 debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 安装 Node 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
+      # 项目用 pnpm（只有 pnpm-lock.yaml），必须先装 pnpm
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: 安装 JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
       - name: 配置 Android SDK
         uses: android-actions/setup-android@v3
+
+      # setup-android 只装基础工具，不会装 platforms;android-34。
+      # AGP 8.2.2 + compileSdk 34 必须有这个平台，缺了会直接失败。
+      - name: 安装 SDK 34 平台与构建工具
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          echo "--- 已安装组件 ---"
+          sdkmanager --list_installed
 
       - name: 配置 Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -45,7 +60,7 @@ jobs:
 
       # 前端要先构建：APK 的 assets 来自 dist/
       - name: 安装前端依赖
-        run: npm ci --no-audit --no-fund
+        run: pnpm install --frozen-lockfile
 
       - name: 构建前端
         run: node scripts/build.mjs
